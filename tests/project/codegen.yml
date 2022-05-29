@@ -1,0 +1,6 @@
+schema: https://api.thegraph.com/subgraphs/name/synthetixio-team/mainnet-main
+generates:
+  api/:
+    preset: thegraph-preset
+    presetConfig:
+      language: typescript-react-apollo
