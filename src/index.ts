@@ -17,7 +17,13 @@ export const preset: Types.OutputPreset<TheGraphConfig> = {
         if (options.presetConfig.language === 'typescript-react-apollo') {
             presetPlugins.push({
                 add: {
-                    content: `import Wei, { wei } from '@synthetixio/wei';\n`
+                    content: `
+import Wei, { wei } from '@synthetixio/wei';
+import { withScalars } from "apollo-link-scalars";
+import { ApolloLink } from "@apollo/client/core";
+import introspectionResult from "./graphql.schema.json";
+import { buildClientSchema, IntrospectionQuery } from "graphql";
+`
                 }
             }, {
                 typescript: {
@@ -36,32 +42,40 @@ export const preset: Types.OutputPreset<TheGraphConfig> = {
                 'typescript-operations': {}
             }, {
                 add: {
+                    placement: 'append',
                     content: `
-import { withScalars } from "apollo-link-scalars";
-import { ApolloLink, HttpLink } from "@apollo/client/core";
-import introspectionResult from "./graphql.schema.json";
-import { buildClientSchema, IntrospectionQuery } from "graphql";
-
 const schema = buildClientSchema((introspectionResult as unknown) as IntrospectionQuery);
-
-const typesMap = {
-    BigInt: {
-        serialize: (parsed: unknown): string | null => (parsed instanceof Wei ? parsed.toString() : null),
-        parseValue: (raw: unknown): Wei | null => {
-            if (!raw) return null; // if for some reason we want to treat empty string as null, for example
-            if (typeof raw === 'string') {
-                return wei(raw);
+export function addEthTypeLink(nextLink: ApolloLink) {
+    const typesMap = {
+        BigInt: {
+            serialize: (parsed: unknown): string | null => (parsed instanceof Wei ? parsed.toString() : null),
+            parseValue: (raw: unknown): Wei | null => {
+                if (!raw) return null; // if for some reason we want to treat empty string as null, for example
+                if (typeof raw === 'string') {
+                    return wei(raw);
+                }
+            
+                throw new Error("invalid value to parse")
             }
+        },
+        BigDecimal: {
+            serialize: (parsed: unknown): string | null => (parsed instanceof Wei ? parsed.toString() : null),
+            parseValue: (raw: unknown): Wei | null => {
+                if (!raw) return null; // if for some reason we want to treat empty string as null, for example
+                if (typeof raw === 'string') {
+                    return wei(raw);
+                }
+            
+                throw new Error("invalid value to parse")
+            }
+        },
+    };
         
-            throw new Error("invalid value to parse")
-        }
-    }
-};
-    
-export const EthTypesLink = ApolloLink.from([
-    withScalars({ schema, typesMap }),
-    //new HttpLink({ uri: "http://example.org/graphql" })
-]);
+    return ApolloLink.from([
+        withScalars({ schema, typesMap }),
+        nextLink
+    ]);
+}
 `
                 }
             }, {
