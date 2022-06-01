@@ -207,7 +207,11 @@ function fieldDefinitionToField(fieldDefinition: FieldDefinitionNode, document: 
         // TODO: handle arguments
         selectionSet: typeDefinition?.fields ? {
             kind: 'SelectionSet',
-            selections: depth >= 3 ? [] : typeDefinition.fields.map((f) => fieldDefinitionToField(f, document, depth + 1))
+            selections: depth >= 3 ? 
+                // cannot supply empty selection set and `id` field must exist
+                [fieldDefinitionToField(typeDefinition.fields.find(f => f.name.value === 'id')!, document)] : 
+                // include all fields
+                typeDefinition.fields.map((f) => fieldDefinitionToField(f, document, depth + 1))
         } : undefined
     }
 }
